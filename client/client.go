@@ -3,6 +3,8 @@ package client
 import (
 	"errors"
 	"fmt"
+	"log"
+	"math/rand"
 	"net/http"
 
 	"github.com/tmavrin/tp-link/encryption"
@@ -16,6 +18,8 @@ type Client struct {
 	seq        int
 }
 
+const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
 func Authenticate(host string, username string, password string) (*Client, error) {
 	rsaKey, seq, err := getAuthParams(host)
 	if errors.Is(err, ErrorInternal) {
@@ -25,9 +29,17 @@ func Authenticate(host string, username string, password string) (*Client, error
 		return nil, fmt.Errorf("failed getting auth params: %w", err)
 	}
 
-	// TODO: generate this randomly
-	key := "1234567890123456"
-	iv := "somepass12345672"
+	log.Println("- fetched auth params")
+
+	key := make([]byte, 16)
+	for i := range key {
+		key[i] = letters[rand.Intn(len(letters))]
+	}
+
+	iv := make([]byte, 16)
+	for i := range iv {
+		iv[i] = letters[rand.Intn(len(letters))]
+	}
 
 	auth := &Auth{
 		Host: host,
@@ -36,11 +48,10 @@ func Authenticate(host string, username string, password string) (*Client, error
 	c := Client{
 		host: host,
 		rsa:  encryption.NewRSA(rsaKey),
-		aes:  encryption.NewAES([]byte(key), []byte(iv)),
+		aes:  encryption.NewAES(key, iv),
 		seq:  seq,
 		httpClient: &http.Client{
 			Transport: &Transport{
-				Base: http.DefaultTransport,
 				Auth: auth,
 			},
 		},
@@ -55,5 +66,12 @@ func Authenticate(host string, username string, password string) (*Client, error
 }
 
 func (c *Client) Close() error {
-	return c.MakeRequest(Logout, nil)
+	_, err := c.MakeRequest([]TPRequestWithArgs{{Req: Logout, Args: nil}})
+	if err != nil {
+		return err
+	}
+
+	log.Println("- logged out successfully")
+
+	return nil
 }

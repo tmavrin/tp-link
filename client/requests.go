@@ -14,16 +14,11 @@ const (
 type TPRequest struct {
 	Method     TPMethod
 	Controller string
+	Stack      int
 	Attributes []string
 }
 
 var (
-	SMSSend TPRequest = TPRequest{
-		Method:     MethodSet,
-		Controller: "LTE_SMS_SENDNEWMSG",
-		Attributes: []string{"index", "to", "textContent"},
-	}
-
 	Logout TPRequest = TPRequest{
 		Method:     MethodCGI,
 		Controller: "/cgi/logout",

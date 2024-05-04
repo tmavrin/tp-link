@@ -24,7 +24,7 @@ func (a *AES) Encrypt(src string) (string, error) {
 
 	ecb := cipher.NewCBCEncrypter(block, []byte(a.IV))
 
-	content := PKCS5Padding([]byte(src), block.BlockSize())
+	content := pkcs5Padding([]byte(src), block.BlockSize())
 	encrypted := make([]byte, len(content))
 	ecb.CryptBlocks(encrypted, content)
 
@@ -45,17 +45,17 @@ func (a *AES) Decrypt(src string) (string, error) {
 	decrypted := make([]byte, len(value))
 	ecb.CryptBlocks(decrypted, value)
 
-	return string(PKCS5Trimming(decrypted)), nil
+	return string(pkcs5Trimming(decrypted)), nil
 }
 
-func PKCS5Padding(src []byte, blockSize int) []byte {
+func pkcs5Padding(src []byte, blockSize int) []byte {
 	padding := blockSize - len(src)%blockSize
 	paddedText := bytes.Repeat([]byte{byte(padding)}, padding)
 
 	return append(src, paddedText...)
 }
 
-func PKCS5Trimming(encrypt []byte) []byte {
+func pkcs5Trimming(encrypt []byte) []byte {
 	padding := encrypt[len(encrypt)-1]
 	return encrypt[:len(encrypt)-int(padding)]
 }

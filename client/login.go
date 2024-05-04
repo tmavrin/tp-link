@@ -44,8 +44,6 @@ func getAuthParams(host string) (*rsa.PublicKey, int, error) {
 		return nil, 0, ErrorInternal
 	}
 
-	log.Println(string(bodyBytes))
-
 	eeRF := eeRgx.Find(bodyBytes)
 	ee := strings.TrimPrefix(string(eeRF), "ee=\"")
 	eeInt, err := strconv.ParseInt(ee, 16, 0)
@@ -104,9 +102,11 @@ func (c *Client) login(username string, password string) (string, string, error)
 		}
 	}
 
-	if sessionID == "deleted" {
-		return "", "", fmt.Errorf("wrong username and password")
+	if sessionID == "deleted" || sessionID == "" {
+		return "", "", fmt.Errorf("session id not set - might be wrong username and password")
 	}
+
+	log.Println("- logged in successfully")
 
 	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/", c.host), nil)
 	if err != nil {
@@ -127,7 +127,14 @@ func (c *Client) login(username string, password string) (string, string, error)
 
 	token := string(homeRgx.Find(homeB))
 	token = strings.TrimPrefix(string(token), "var token=\"")
+
+	if len(token) == 0 {
+		return "", "", fmt.Errorf("token not found in home body: %w", err)
+	}
+
 	token = token[0 : len(token)-1]
+
+	log.Println("- fetched token successfully")
 
 	return sessionID, token, nil
 

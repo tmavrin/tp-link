@@ -3,27 +3,44 @@ package client
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 )
 
-func (c *Client) MakeRequest(req TPRequest, args map[string]string) error {
-	for _, v := range req.Attributes {
-		if args[v] == "" {
-			return fmt.Errorf("'%s' not passed in as args", v)
+type TPRequestWithArgs struct {
+	Req  TPRequest
+	Args map[string]string
+}
+
+func (c *Client) MakeRequest(reqs []TPRequestWithArgs) (string, error) {
+	var data string
+
+	for _, req := range reqs {
+		if data != "" {
+			data += "&"
 		}
+		data += strconv.Itoa(int(req.Req.Method))
 	}
 
-	command := fmt.Sprintf("[%s#0,0,0,0,0,0#0,0,0,0,0,0]0,%d", req.Controller, len(args))
+	data += "\r\n"
 
-	data := fmt.Sprintf("%d\r\n%s\r\n", req.Method, command)
+	for _, req := range reqs {
+		command := fmt.Sprintf("[%s#0,0,0,0,0,0#0,0,0,0,0,0]%d,%d", req.Req.Controller, req.Req.Stack, len(req.Req.Attributes))
 
-	for _, v := range req.Attributes {
-		data += fmt.Sprintf("%s=%s\r\n", v, args[v])
+		data += fmt.Sprintf("%s\r\n", command)
+
+		for _, v := range req.Req.Attributes {
+			if req.Args[v] == "" {
+				data += fmt.Sprintf("%s\r\n", v)
+			} else {
+				data += fmt.Sprintf("%s=%s\r\n", v, req.Args[v])
+			}
+		}
 	}
 
 	encryptedData, err := c.aes.Encrypt(data)
 	if err != nil {
-		return fmt.Errorf("encrypting data: %w", err)
+		return "", fmt.Errorf("encrypting data: %w", err)
 	}
 
 	signedData := c.rsa.Encrypt(fmt.Sprintf("h=undefined&s=%d", c.seq+len(encryptedData)))
@@ -32,22 +49,22 @@ func (c *Client) MakeRequest(req TPRequest, args map[string]string) error {
 
 	response, err := c.httpClient.Post(fmt.Sprintf("%s/cgi_gdpr", c.host), "text/plain", strings.NewReader(requestBody))
 	if err != nil {
-		return fmt.Errorf("making post request: %w", err)
+		return "", fmt.Errorf("making post request: %w", err)
 	}
 
 	encryptedResponse, err := io.ReadAll(response.Body)
 	if err != nil {
-		return fmt.Errorf("reading response body: %w", err)
+		return "", fmt.Errorf("reading response body: %w", err)
 	}
 
 	body, err := c.aes.Decrypt(string(encryptedResponse))
 	if err != nil {
-		return fmt.Errorf("decrypting response body: %w", err)
+		return "", fmt.Errorf("decrypting response body: %w", err)
 	}
 
 	if strings.Contains(body, "[error]0") {
-		return nil
+		return body, nil
 	}
 
-	return fmt.Errorf("error response: %s", body)
+	return body, fmt.Errorf("error response: %s", body)
 }
