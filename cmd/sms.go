@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/tmavrin/tp-link/client"
 	"github.com/tmavrin/tp-link/pkg/sms"
 )
@@ -38,7 +39,11 @@ var smsListCmd = &cobra.Command{
 	Short: "List SMS Inbox",
 	Long:  `Pagination not implemented`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c, err := client.Authenticate("http://192.168.1.1", "admin", "admin")
+		c, err := client.Authenticate(
+			viper.GetString("host"),
+			viper.GetString("username"),
+			viper.GetString("password"),
+		)
 		if err != nil {
 			log.Println(err)
 			os.Exit(1)
@@ -79,7 +84,11 @@ var smsSendCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		c, err := client.Authenticate("http://192.168.1.1", "admin", "admin")
+		c, err := client.Authenticate(
+			viper.GetString("host"),
+			viper.GetString("username"),
+			viper.GetString("password"),
+		)
 		if err != nil {
 			log.Println(err)
 			os.Exit(1)
@@ -125,7 +134,11 @@ var smsFindCmd = &cobra.Command{
 			fmt.Println("--from not set, searching all messages")
 		}
 
-		c, err := client.Authenticate("http://192.168.1.1", "admin", "admin")
+		c, err := client.Authenticate(
+			viper.GetString("host"),
+			viper.GetString("username"),
+			viper.GetString("password"),
+		)
 		if err != nil {
 			log.Println(err)
 			os.Exit(1)
