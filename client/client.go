@@ -21,6 +21,26 @@ type Client struct {
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func Authenticate(host string, username string, password string) (*Client, error) {
+	var (
+		c   *Client
+		err error
+	)
+
+	// sometimes we get random error on auth so we can retry
+	for i := 0; i < 3; i++ {
+		c, err = authenticate(host, username, password)
+		if err != nil && !errors.Is(err, ErrorSessionNotSet) {
+			return nil, err
+		}
+		if err == nil {
+			return c, nil
+		}
+		fmt.Printf("Failed authenticating. Retry %d\n", i+1)
+	}
+	return nil, fmt.Errorf("failed to auth after 3 retries, %s", err)
+}
+
+func authenticate(host string, username string, password string) (*Client, error) {
 	rsaKey, seq, err := getAuthParams(host)
 	if errors.Is(err, ErrorInternal) {
 		rsaKey, seq, err = getAuthParams(host)

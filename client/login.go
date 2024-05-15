@@ -19,7 +19,8 @@ var (
 	seqRgx  = regexp.MustCompile(`var seq="(\d+)`)
 	homeRgx = regexp.MustCompile(`var token="([a-f0-9]+)"`)
 
-	ErrorInternal = errors.New("internal server error")
+	ErrorInternal      = errors.New("internal server error")
+	ErrorSessionNotSet = errors.New("session not set")
 )
 
 func getAuthParams(host string) (*rsa.PublicKey, int, error) {
@@ -103,7 +104,7 @@ func (c *Client) login(username string, password string) (string, string, error)
 	}
 
 	if sessionID == "deleted" || sessionID == "" {
-		return "", "", fmt.Errorf("session id not set - might be wrong username and password")
+		return "", "", ErrorSessionNotSet
 	}
 
 	log.Println("- logged in successfully")
